@@ -1,3 +1,6 @@
-all:
-	elm make --output calc.js Calc.elm
+.PHONY: calc.js
 
+all: calc.js
+
+calc.js: Calc.elm Stack.elm
+	elm make --output $@ $^
