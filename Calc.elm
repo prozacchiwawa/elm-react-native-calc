@@ -1,7 +1,10 @@
 port module Calc exposing (..)
 
-import Html exposing (..)
-import Html.App exposing (program)
+import NativeUi exposing (string)
+import NativeUi.NativeApp exposing (program)
+import NativeUi.Elements exposing (text)
+import Json.Encode
+import Json.Decode
 import String
 import Lazy.List as LL exposing (LazyList)
 
@@ -17,6 +20,11 @@ type Action
   | Close
 
 type alias Model = Stack Float
+
+stackText model =
+  case pop model of
+    (Just _, _) -> model |> stackIterator |> LL.map toString |> LL.toList |> String.join " "
+    _ -> "Nothing"
 
 update action model = 
   let doBin action =
@@ -49,8 +57,7 @@ update action model =
    case (action, pop updatedModel) of
      (Close, (Just a, st)) -> Cmd.batch [output (toString a), end 0]
      (Close, (Nothing, st)) -> end 1
-     (_, (Nothing, st)) -> output "Nothing"
-     (_, (Just a, st)) -> (updatedModel |> stackIterator |> LL.map toString |> LL.toList |> String.join " " |> output)
+     (_, (_, st)) -> updatedModel |> stackText |> output
   )
 
 translateInputString str =
@@ -67,11 +74,17 @@ main =
   program
     { init = ([], Cmd.none)
     , update = update
-    , view = always (Html.text "")
+    , view = \model -> text [] [model |> stackText |> string]
     , subscriptions = \_ -> Sub.batch [input translateInputString, close (\_ -> Close)]
+    , renderPort = render
+    , eventPort = event identity
     }
 
 port input : (String -> msg) -> Sub msg
 port output : String -> Cmd msg
 port close : ({} -> msg) -> Sub msg
 port end : Int -> Cmd msg
+
+-- React Native
+port render : Json.Encode.Value -> Cmd msg
+port event : ((String, Json.Decode.Value) -> msg) -> Sub msg
