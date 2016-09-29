@@ -1,4 +1,4 @@
-port module Calc exposing (..)
+module Calc exposing (..)
 
 import Debug exposing (log)
 import NativeUi exposing (string, style)
@@ -24,12 +24,13 @@ type Action
   | Input Char
   | Clear
   | Again
-  | Close
 
 type alias Model =
     { stack : Stack Float
     , input : String
     }
+
+init = { stack = [], input = "" }
 
 button props children =
     NativeUi.node "Button" props children
@@ -68,14 +69,8 @@ update action model =
       Clear -> { model | input = "" }
       Input ch -> { model | input = String.append model.input (String.fromChar ch) }
       Again -> { model | stack = [], input = "" }
-      Close -> model
   in
-  (updatedModel,
-   case (action, pop updatedModel.stack) of
-     (Close, (Just a, st)) -> Cmd.batch [output (toString a), end 0]
-     (Close, (Nothing, st)) -> end 1
-     (_, (_, st)) -> updatedModel |> stackText |> output
-  )
+  updatedModel ! []
 
 translateInputString str =
   case str of
@@ -140,22 +135,3 @@ calcView model =
             ]
         ]
     ]
-
-main =
-  program
-    { init = ({ stack = [], input = "" }, Cmd.none)
-    , update = update
-    , view = calcView
-    , subscriptions = \_ -> Sub.batch [input translateInputString, close (\_ -> Close)]
-    , renderPort = render
-    , eventPort = event identity
-    }
-
-port input : (String -> msg) -> Sub msg
-port output : String -> Cmd msg
-port close : ({} -> msg) -> Sub msg
-port end : Int -> Cmd msg
-
--- React Native
-port render : Json.Encode.Value -> Cmd msg
-port event : ((String, Json.Decode.Value) -> msg) -> Sub msg
